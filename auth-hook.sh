@@ -5,8 +5,8 @@ DOMAIN="_acme-challenge.$CERTBOT_DOMAIN."
 TOKEN="$CERTBOT_VALIDATION"
 
 # Google Cloud Project and Zone
-PROJECT="your-gcp-project-id"
-ZONE="your-dns-zone-name" # e.g., "plant-genes-zone"
+PROJECT="prj-ext-prod-hgnc-cloud-ls"
+ZONE="genenames-org" # e.g., "plant-genes-zone"
 
 # Create TXT record
 gcloud dns record-sets transaction start --zone=$ZONE --project=$PROJECT
