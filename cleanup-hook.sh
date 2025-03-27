@@ -3,8 +3,8 @@
 DOMAIN="_acme-challenge.$CERTBOT_DOMAIN."
 TOKEN="$CERTBOT_VALIDATION"
 
-PROJECT="your-gcp-project-id"
-ZONE="your-dns-zone-name"
+PROJECT="prj-ext-prod-hgnc-cloud-ls"
+ZONE="genenames-org"
 
 gcloud dns record-sets transaction start --zone=$ZONE --project=$PROJECT
 gcloud dns record-sets transaction remove "$TOKEN" \
