@@ -1,114 +1,113 @@
-# pgnc-certbot
+# PGNC Certbot
 
-Automated Certificate Management with Certbot and Google Cloud DNS.
+Automated DNS-01 certificate issuance for PGNC domains using Certbot and Google Cloud DNS.
 
-## Description
+## What This Image Provides
 
-This container automates the process of obtaining SSL/TLS certificates using Certbot for specified domains. It integrates with Google Cloud DNS to manage DNS challenges required for certificate issuance.
+- Headless `certbot` execution with `gcloud` already installed
+- DNS-01 challenge automation through bundled `auth-hook.sh` and `cleanup-hook.sh`
+- Persistent certificate storage in the shared `certbot-etc` Docker volume consumed by `nginx`
 
-## Requirements
+Repository layout:
+- `Dockerfile` – builds on `certbot/certbot` and installs the Google Cloud SDK
+- `entrypoint.sh` – authenticates with Google Cloud using the mounted key file before delegating to Certbot
+- `auth-hook.sh` / `cleanup-hook.sh` – manage TXT records in Google Cloud DNS during the validation flow
 
-- Docker: To build and run the container.
-- gcp-key.json: You need a JSON key file of a Google Cloud Platform service account which has access to the Cloud DNS.
+## Prerequisites
 
-## Setup
+- Docker 24+ (or any modern Docker Engine that supports Compose v2)
+- A Google Cloud service account JSON key with DNS record management access
+- A public DNS zone in Google Cloud that hosts the target domains
 
-### 1. Install Docker
+## Quick Start (Docker Compose)
 
-Ensure Docker is installed on your system. For installation instructions, refer to Docker's documentation.
+1. Place your service account key at `certbot/gcp-key.json` and keep it out of version control.
+2. Update the `PROJECT` and `ZONE` variables near the top of `certbot/auth-hook.sh` and `certbot/cleanup-hook.sh` so they match your Google Cloud DNS setup.
+3. Add your registration email to the root `.env` file (used by `docker-compose.yml`):
 
-### 2. Build the Container Image
+     ```bash
+     MY_EMAIL=you@example.org
+     ```
 
-Clone this repository and build the container using:
+4. Ensure the domains listed in `docker-compose.yml` under the `certbot` service reflect the hostnames you own.
+5. Request certificates:
 
-```BASH
-docker build -t pgnc-certbot .
-```
+     ```bash
+     docker compose --profile ssl run --rm certbot
+     ```
 
-### 3. Run the Container
+     The command executes the pre-configured `certonly` invocation with the DNS hooks. Certificates land in the `certbot-etc` named volume (`./certbot` does not contain the live certificates).
 
-Start the container with:
+6. Start the full stack (including `nginx`) once the certificates are issued:
 
-```BASH
-docker run -d --name pgnc-certbot \
-    certbot certonly \
-        --manual \
-        --preferred-challenges=dns \
-        -manual-auth-hook=/auth-hook.sh \
-        --manual-cleanup-hook=/cleanup-hook.sh \
-        --email=MY_EMAIL \
-        --agree-tos \
-        --non-interactive \
-        -d plant.genenames.org \
-        -d pgnc.genenames.org
-```
-
-The --env-file flag uses gcp-key.json to configure Google Cloud DNS integration.
-Replace the domains in the command with your own.
+     ```bash
+     docker compose --profile ssl up -d nginx
+     ```
 
 ## Configuration
 
-### 1. Google Cloud Key File
+### Service Account Permissions
 
-Create a gcp-key.json file at the root of your project. This file should contain your Google Cloud service account key for managing DNS zones and TXT records.
+The service account must be able to read and write TXT records in the target zone. In most cases the `roles/dns.admin` IAM role is sufficient. The key file is mounted read-only at `/gcp-key.json` inside the container.
 
-### 2. Domains Configuration
+### Domains and Validation Zone
 
-Specify the domains you want to manage in the container run command. Ensure each domain has DNS records configured in Google Cloud DNS with the A type pointing to your IP of your server. Replace plant.genenames.org and/or pgnc.genenames.org to your own domain names.
+The DNS hooks assume a single Cloud DNS zone. Edit the `PROJECT` and `ZONE` constants in the hook scripts if you need a different zone per domain or use custom logic. Adjust the `sleep 60` in `auth-hook.sh` if propagation in your environment requires more or less time.
 
-### 3. Email address
+Target domains are configured through the `certbot` service command in `docker-compose.yml`. Add more `-d` arguments as needed; each must resolve to your infrastructure and have the corresponding `_acme-challenge` record managed by Google Cloud DNS.
 
-Replace the MY_EMAIL in the docker run command with your own email address which is used for the Certbot registration.
+### Contact Email
 
-## Usage
+`MY_EMAIL` is passed to Certbot for expiry notifications and Terms of Service agreement. Define it in `.env` or override it by setting `MY_EMAIL` when invoking Compose, for example:
 
-### 1. Obtain Certificates
+```bash
+MY_EMAIL=ssl-alerts@example.org docker compose --profile ssl run --rm certbot
+```
 
-When the container starts, Certbot will automatically initiate the certificate process using the provided hooks and Google Cloud DNS configuration. Certificates will be stored in /etc/letsencrypt/.
+## Renewal Workflow
 
-### 2. Certificate Management
+- To simulate the flow without issuing real certificates:
 
-- Auth Hook (auth-hook.sh): Creates TXT records in Google Cloud DNS upon certificate issuance.
-- Cleanup Hook (cleanup-hook.sh): Removes unused TXT records after certificate renewal.
+    ```bash
+    docker compose --profile ssl run --rm certbot renew --dry-run
+    ```
+
+- To renew certificates (typically from a cron job on the host):
+
+    ```bash
+    docker compose --profile ssl run --rm certbot renew
+    ```
+
+The hooks handle TXT record creation and cleanup for each domain during renewal exactly as they do for the initial request.
+
+## Operational Notes
+
+- Live certificates, keys, and renewal configuration reside in the `certbot-etc` Docker volume. `nginx` mounts this volume read-only to serve TLS traffic.
+- Inspect logs when debugging DNS propagation or API permission problems:
+
+    ```bash
+    docker compose logs -f certbot
+    ```
+
+- Warning output similar to the snippet below is safe to ignore; it simply echoes Google Cloud DNS transaction details:
+
+    ```text
+    Hook '--manual-cleanup-hook' ran with error output:
+     Transaction started [transaction.yaml].
+     Record removal appended to transaction at [transaction.yaml].
+     Executed transaction [transaction.yaml] for managed-zone [...]
+    ```
 
 ## Troubleshooting
 
-### Common Issues
-
-1. DNS Propagation Delay: Allow up to 24 hours for TXT record propagation.
-2. API Errors: Ensure the Google Cloud service account has the necessary permissions for DNS zones and TXT records.
-3. Permissions Issues: Verify that the service account has the roles/iam.serviceAccountManager role if you're managing multiple domains.
-
-### Logs
-
-Check container logs for any errors:
-
-```BASH
-docker logs -f pgnc-certbot
-```
-
-## Note on Hook errors
-
-If you see the error below, please ignore.
-
-```TEXT
-Hook '--manual-cleanup-hook' for plant.genenames.org ran with error output:
- Transaction started [transaction.yaml].
- Record removal appended to transaction at [transaction.yaml].
- Executed transaction [transaction.yaml] for managed-zone [genenames-org].
- Created [https://dns.googleapis.com/dns/v1/projects/......
-```
-
-## Domain Configuration in Google Cloud DNS
-
-- [Google Cloud DNS Documentation](https://cloud.google.com/dns/docs)
-- Ensure each domain has a TXT record pointing to a Google-managed domain.
-- Configure the zone with DNSSEC if required.
+- **Extended DNS propagation** – Increase the sleep duration in `auth-hook.sh` if TXT records are not visible quickly enough. Use `dig` against Google Cloud DNS name servers to verify propagation.
+- **Permission denied errors** – Confirm the service account has `roles/dns.admin` on the Google Cloud project and that the `gcp-key.json` file is readable by Docker.
+- **Challenge still pending** – Ensure nothing else manages `_acme-challenge` records for the same hostnames and that no stale TXT records remain.
 
 ## Contributing
 
-Contributions and questions are welcome at [GitHub Issues](https://github.com/HGNC/pgnc-certbot/issues).
+Issues and pull requests are welcome via the main PGNC stack repository. Please avoid committing credential files or other secrets.
 
 ## License
 
-This project is licensed under Creative Commons Zero v1.0 Universal. For more details, see the [LICENSE](https://github.com/HGNC/pgnc-certbot/blob/main/LICENSE) file.
+This component inherits the root repository licensing (AGPL-3.0). Review `LICENSE` at the repository root for details.
