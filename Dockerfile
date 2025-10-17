@@ -3,30 +3,33 @@
 # Alpine-based Certbot container with Google Cloud SDK and DNS-01 challenge hooks
 # Built for PGNC External Stack SSL certificate automation
 
-FROM alpine:3.18
+FROM alpine:3.19
 
 # Metadata
 LABEL maintainer="PGNC External Stack" \
       description="Certbot with Google Cloud DNS support and embedded hook scripts" \
       version="1.0.0"
 
-# Install system dependencies and Certbot
-# Note: Using specific versions for reproducible builds
+# Install system dependencies and Certbot base
+# Note: Using flexible versioning for compatibility with Alpine package updates
 RUN apk add --no-cache \
     # Core system utilities
-    bash=~5.2 \
-    curl=~8.2 \
+    bash \
+    curl \
     ca-certificates \
     tzdata \
     # Python and pip for Certbot
-    python3=~3.11 \
-    py3-pip=~23.1 \
-    # Certbot and Google DNS plugin
-    certbot=~2.6 \
-    py3-certbot-dns-google=~2.6 \
+    python3 \
+    py3-pip \
+    # Certbot base (DNS plugin installed via pip)
+    certbot \
     # Additional utilities for debugging
     bind-tools \
     && rm -rf /var/cache/apk/*
+
+# Install Certbot DNS plugins via pip for better compatibility
+RUN pip3 install --no-cache-dir --break-system-packages certbot-dns-google==2.6.0 && \
+    echo "Google DNS plugin installed via pip"
 
 # Verify Certbot installation
 RUN certbot --version && \
