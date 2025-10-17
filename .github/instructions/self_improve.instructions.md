@@ -1,52 +1,71 @@
-````instructions
 ---
-description: Guidelines for continuously improving certbot rules based on emerging patterns and operational best practices.
+description: Guidelines for continuously improving VS Code rules based on emerging code patterns and best practices.
 applyTo: "**/*"
 ---
 
-# Self-Improvement Guidelines for Certbot Service
+- **Rule Improvement Triggers:**
+  - New code patterns not covered by existing rules
+  - Repeated similar implementations across files
+  - Common error patterns that could be prevented
+  - New libraries or tools being used consistently
+  - Emerging best practices in the codebase
 
-## Rule Improvement Triggers
+- **Analysis Process:**
+  - Compare new code with existing rules
+  - Identify patterns that should be standardized
+  - Look for references to external documentation
+  - Check for consistent error handling patterns
+  - Monitor test patterns and coverage
 
-- New certbot flags or behavior changes
-- Repeated operational issues with DNS-01 challenges
-- Updated Google Cloud SDK authentication patterns
-- Emerging best practices for ACME automation
+- **Rule Updates:**
+  - **Add New Rules When:**
+    - A new technology/pattern is used in 3+ files
+    - Common bugs could be prevented by a rule
+    - Code reviews repeatedly mention the same feedback
+    - New security or performance patterns emerge
 
-## Analysis Process
+  - **Modify Existing Rules When:**
+    - Better examples exist in the codebase
+    - Additional edge cases are discovered
+    - Related rules have been updated
+    - Implementation details have changed
 
-- Compare hook scripts against recent certbot docs
-- Validate idempotency and error handling in hooks
-- Ensure environment variables and secrets are properly used
-- Monitor certbot logs from workflow runs
+- **Example Pattern Recognition:**
+  ```typescript
+  // If you see repeated patterns like:
+  const data = await prisma.user.findMany({
+    select: { id: true, email: true },
+    where: { status: 'ACTIVE' }
+  });
+  
+  // Consider adding to [prisma.instructions.md](.github/instructions/prisma.instructions.md):
+  // - Standard select fields
+  // - Common where conditions
+  // - Performance optimization patterns
+  ```
 
-## Rule Updates
+- **Rule Quality Checks:**
+  - Rules should be actionable and specific
+  - Examples should come from actual code
+  - References should be up to date
+  - Patterns should be consistently enforced
 
-- Add rules when:
-  - New hook patterns prove reliable
-  - Common errors can be prevented
-  - Security posture can be improved (e.g., least-privilege keys)
+- **Continuous Improvement:**
+  - Monitor code review comments
+  - Track common development questions
+  - Update rules after major refactors
+  - Add links to relevant documentation
+  - Cross-reference related rules
 
-- Modify rules when:
-  - Certbot or gcloud CLI changes flags
-  - Better retries/backoff patterns emerge
+- **Rule Deprecation:**
+  - Mark outdated patterns as deprecated
+  - Remove rules that no longer apply
+  - Update references to deprecated rules
+  - Document migration paths for old patterns
 
-## Example Pattern Recognition
-
-```bash
-# Ensure gcloud auth is in place before DNS updates
-gcloud auth activate-service-account --key-file=/gcp-key.json
-```
-
-## Quality Checks
-
-- Hooks must be idempotent and handle retries
-- Secrets must never be logged
-- Dry-run support should be documented
-
-## Continuous Improvement
-
-- Track expirations and automate renewals
-- Pin base images to avoid unexpected breakage
-- Keep release notes updated with operational gotchas
-````
+- **Documentation Updates:**
+  - Keep examples synchronized with code
+  - Update references to external docs
+  - Maintain links between related rules
+  - Document breaking changes
+Follow [vscode_rules.instructions.md](.github/instructions/vscode_rules.instructions.md) for proper rule formatting and structure.

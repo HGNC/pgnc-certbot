@@ -1,40 +1,52 @@
-````instructions
 ---
-description: VS Code rules guidance for certbot service repository docs and scripts
+description: Guidelines for creating and maintaining VS Code rules to ensure consistency and effectiveness.
 applyTo: ".github/instructions/*.instructions.md"
 ---
 
-# VS Code Rules for Certbot Service
+- **Required Rule Structure:**
+  ```markdown
+  ---
+  description: Clear, one-line description of what the rule enforces
+  globs: path/to/files/*.ext, other/path/**/*
+  alwaysApply: boolean
+  ---
 
-## Rule Structure
+  - **Main Points in Bold**
+    - Sub-points with details
+    - Examples and explanations
+  ```
 
-```markdown
----
-description: Clear, one-line description of what the rule enforces
-globs: certbot/**/*.sh, certbot/**/*.md, certbot/Dockerfile
-alwaysApply: boolean
----
+- **File References:**
+  - Use `[filename](mdc:path/to/file)` ([filename](mdc:filename)) to reference files
+  - Example: [prisma.instructions.md](.github/instructions/prisma.instructions.md) for rule references
+  - Example: [schema.prisma](mdc:prisma/schema.prisma) for code references
 
-- **Main Points in Bold**
-  - Sub-points with details
-  - Examples and explanations
-```
+- **Code Examples:**
+  - Use language-specific code blocks
+  ```typescript
+  // ✅ DO: Show good examples
+  const goodExample = true;
+  
+  // ❌ DON'T: Show anti-patterns
+  const badExample = false;
+  ```
 
-## Script Examples
+- **Rule Content Guidelines:**
+  - Start with high-level overview
+  - Include specific, actionable requirements
+  - Show examples of correct implementation
+  - Reference existing code when possible
+  - Keep rules DRY by referencing other rules
 
-```bash
-# ✅ DO: Validate required environment variables
-: "${MY_EMAIL:?MY_EMAIL is required}"
+- **Rule Maintenance:**
+  - Update rules when new patterns emerge
+  - Add examples from actual codebase
+  - Remove outdated patterns
+  - Cross-reference related rules
 
-# ❌ DON'T: Hardcode secrets
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/secret.json
-```
-
-## Best Practices
-
-- Shell scripts must be `set -euo pipefail`
-- Use `trap` for cleanup on exit
-- Avoid logging secrets
-- Support `--dry-run` flows
-- Document mounts and environment variables in README or instructions
-````
+- **Best Practices:**
+  - Use bullet points for clarity
+  - Keep descriptions concise
+  - Include both DO and DON'T examples
+  - Reference actual code over theoretical examples
+  - Use consistent formatting across rules 
